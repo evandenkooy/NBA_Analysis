@@ -95,9 +95,6 @@ server <- function(input, output) {
       geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
                 aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
                 size = 0.8, alpha = 0.5, color = "gray") +
-      geom_point(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
-                 aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
-                 size = 2, alpha = 0.5, color = "gray") +
       labs(x = "Shot Category", y = NULL, title = "Curved Line Graph by Player") +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -113,5 +110,7 @@ server <- function(input, output) {
 }
 
 shinyApp(ui, server)
+
+
 
 
