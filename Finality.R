@@ -3,7 +3,8 @@ library('tidyverse')
 library('ggplot2')
 library('shiny')
 library('tidyr')
-
+library('babynames')
+baby <- babynames
 #reading in data
 df <- read_csv('NBA_2023_SHOTS.csv')
 
@@ -62,54 +63,77 @@ for (name in unique(players$PLAYER_NAME)){
   }
 }
 
+# #
+# #
+# #
+# ##
+# # Define the UI
+# ui <- fluidPage(
+#   titlePanel("Player Shot Data"),
+#   sidebarLayout(
+#     sidebarPanel(
+#       selectInput("playerInput", "Select Player:", choices = player_data$Name, selected = player_data$Name[1]),
+#     ),
+#     mainPanel(
+#       plotOutput("playerPlot")
+#     )
+#   )
+# )
+# 
+# server <- function(input, output) {
+#   
+#   # Reactive expression to filter player data based on the selected player
+#   selected_player <- reactive({
+#     filter(player_data, Name == input$playerInput)
+#   })
+#   
+#   # Manually set the order of shot categories
+#   category_order <- c("Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep")
+#   
+#   # Create a ggplot object
+#   output$playerPlot <- renderPlot({
+#     ggplot() +
+#       geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+#                 aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+#                 size = 0.8, alpha = 0.5, color = "gray") +
+#       labs(x = "Shot Category", y = NULL, title = "Curved Line Graph by Player") +
+#       theme_minimal() +
+#       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#       theme(axis.text.y = element_blank()) +
+#       geom_smooth(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+#                   aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+#                   method = "loess", se = FALSE, size = 0.5, linetype = "solid", color = "gray") +
+#       geom_smooth(data = gather(selected_player(), key = "ShotCategory", value = "Value", -Name), 
+#                   aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+#                   method = "loess", se = FALSE, size = 0.8, linetype = "dashed", color = "red") +
+#       theme(legend.position = "none", axis.title.y = element_blank(), axis.ticks.y = element_blank())
+#   })
+# }
+# 
+# shinyApp(ui, server)
+# #
+# #
+# #
 #
-#
-#
-##
-# Define the UI
-ui <- fluidPage(
-  titlePanel("Player Shot Data"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("playerInput", "Select Player:", choices = player_data$Name, selected = player_data$Name[1]),
-    ),
-    mainPanel(
-      plotOutput("playerPlot")
-    )
-  )
-)
+pts <- players %>% 
+  select(PLAYER_NAME) %>% 
+  distinct()
 
-server <- function(input, output) {
-  
-  # Reactive expression to filter player data based on the selected player
-  selected_player <- reactive({
-    filter(player_data, Name == input$playerInput)
-  })
-  
-  # Manually set the order of shot categories
-  category_order <- c("Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep")
-  
-  # Create a ggplot object
-  output$playerPlot <- renderPlot({
-    ggplot() +
-      geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
-                aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
-                size = 0.8, alpha = 0.5, color = "gray") +
-      labs(x = "Shot Category", y = NULL, title = "Curved Line Graph by Player") +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      theme(axis.text.y = element_blank()) +
-      geom_smooth(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
-                  aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
-                  method = "loess", se = FALSE, size = 0.5, linetype = "solid", color = "gray") +
-      geom_smooth(data = gather(selected_player(), key = "ShotCategory", value = "Value", -Name), 
-                  aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
-                  method = "loess", se = FALSE, size = 0.8, linetype = "dashed", color = "red") +
-      theme(legend.position = "none", axis.title.y = element_blank(), axis.ticks.y = element_blank())
-  })
+pts$Three_Pts_Made <- 0
+
+for (row in 1:nrow(df)){
+  if ((df$SHOT_TYPE[row] == "3PT Field Goal") & (df$SHOT_MADE[row] == TRUE)){
+    pts$Three_Pts_Made[pts$PLAYER_NAME == df$PLAYER_NAME[row]] <- 
+      pts$Three_Pts_Made[pts$PLAYER_NAME == df$PLAYER_NAME[row]] + 1
+  } 
 }
 
-shinyApp(ui, server)
+pts <- subset(pts, Three_Pts_Made >= 169)
+
+withDate <- df %>%
+  arrange(PLAYER_NAME, GAME_DATE) %>%
+  group_by(PLAYER_NAME) %>%
+  mutate(Three_Pts_Made_Total = cumsum(SHOT_TYPE == "3PT Field Goal" & SHOT_MADE))
 
 
 
