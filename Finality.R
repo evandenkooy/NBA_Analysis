@@ -2,6 +2,7 @@
 library('tidyverse')
 library('ggplot2')
 library('shiny')
+library('tidyr')
 
 #reading in data
 df <- read_csv('NBA_2023_SHOTS.csv')
@@ -31,31 +32,75 @@ players$Efficiency <- players$Total_Attempts * (players$Field_Goal_Percentage ^ 
 
 maxes <- aggregate(Efficiency ~ SHOT_FAR, data = players, FUN = max) #creating a dataframe to find the max efficiency value for each shot distance
 
-
-player_data <- data.frame(matrix(ncol = 7, nrow = 0))
-colnames(player_data) <- c("Name", "Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep")
-
-#HELPPPPPPPP
-for (name in unique(players$PLAYER_NAME)){
-  player_data <- bind_rows(player_data, tibble(
-    Name = name,
-    Hoop = players[players$PLAYER_NAME == name & players$SHOT_FAR == "Hoop", "Hoop"],
-    Short = players[players$PLAYER_NAME == name & players$SHOT_FAR == "Short", "Short"],
-    Midrange = players[players$PLAYER_NAME == name & players$SHOT_FAR == "Midrange", "Midrange"],
-    Deep_2 = players[players$PLAYER_NAME == name & players$SHOT_FAR == "Deep_2", "Deep_2"],
-    Three = players[players$PLAYER_NAME == name & players$SHOT_FAR == "Three", "Three"],
-    Deep = players[players$PLAYER_NAME == name & players$SHOT_FAR == "Deep", "Deep"]
-  ))
+normalize <- function(x){
+  typeof <- x["SHOT_FAR"]
+  eff <- maxes[maxes$SHOT_FAR == typeof, "Efficiency"]
+  part1 <- (as.numeric(x["Efficiency"]) / eff) * (100 / 266.349584)
+  x["Efficiency"] <- part1
+  return(x)
 }
+
+rezzy <- apply(players, 1, normalize)
+
+players <- as.data.frame(t(rezzy))
+
+
 player_data <- data.frame(matrix(ncol = 7, nrow = 0))
 colnames(player_data) <- c("Name", "Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep")
 
+
 for (name in unique(players$PLAYER_NAME)){
-  player_data[nrow(player_data) + 1,][1] = name
+  player_data[nrow(player_data) + 1, 1] = name
   for (shottype in unique(players$SHOT_FAR)) {
     ind <- which(players$PLAYER_NAME == name & players$SHOT_FAR == shottype)
-    ind2 <- which(player_data$PLAYER_NAME == name)
-    player_data[ind2, shottype] <- players[ind, shottype]
-    print(ind)
+    ind2 <- which(player_data$Name == name)
+    if (length(ind) == 0){
+      player_data[ind2, shottype] <- 0
+    } else {
+      player_data[ind2, shottype] <- players[ind, "Efficiency"]
+    }
   }
 }
+
+#
+#
+#
+##
+# Define the UI
+ui <- fluidPage(
+  titlePanel("Player Shot Data"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("playerInput", "Select Player:", choices = player_data$Name, selected = player_data$Name[1]),
+    ),
+    mainPanel(
+      plotOutput("playerPlot")
+    )
+  )
+)
+
+server <- function(input, output) { # Defining the function for the shiny server
+  output$playerPlot <- renderPlot({
+    selected_player <- filter(player_data, Name == input$playerInput) #making input/output for filtering each player
+    
+    category_order <- c("Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep") #ordering the shots by diustance
+    
+    ggplot() +
+      geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+                aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+                size = 0.8, alpha = 0.5, color = "gray") +  #Making background lines thin, gray, faint
+      labs(x = "Shot Category", y = NULL, title = "NBA Player Efficiency at Increasing Distances") + #setting x axis label,  Remove label on y axis
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + #rotate
+      theme(axis.text.y = element_blank()) +  # Remove xtra text on y axis
+      geom_smooth(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+                  aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+                  method = "loess", se = FALSE, size = 0.5, linetype = "solid", color = "gray") +  # Thinner and faint smoothed lines
+      geom_line(data = gather(selected_player, key = "ShotCategory", value = "Value", -Name), 
+                aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name), 
+                size = 2, linetype = "dashed", alpha = 1, color = "red") +  # Highlighted line with thicker size and red color
+      theme(legend.position = "none", axis.title.y = element_blank(), axis.ticks.y = element_blank())
+  })
+}
+
+shinyApp(ui, server)
