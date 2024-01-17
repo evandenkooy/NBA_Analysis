@@ -79,28 +79,39 @@ ui <- fluidPage(
   )
 )
 
-server <- function(input, output) { # Defining the function for the shiny server
+server <- function(input, output) {
+  
+  # Reactive expression to filter player data based on the selected player
+  selected_player <- reactive({
+    filter(player_data, Name == input$playerInput)
+  })
+  
+  # Manually set the order of shot categories
+  category_order <- c("Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep")
+  
+  # Create a ggplot object
   output$playerPlot <- renderPlot({
-    selected_player <- filter(player_data, Name == input$playerInput) #making input/output for filtering each player
-    
-    category_order <- c("Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep") #ordering the shots by diustance
-    
     ggplot() +
       geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
                 aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
-                size = 0.8, alpha = 0.5, color = "gray") +  #Making background lines thin, gray, faint
-      labs(x = "Shot Category", y = NULL, title = "NBA Player Efficiency at Increasing Distances") + #setting x axis label,  Remove label on y axis
+                size = 0.8, alpha = 0.5, color = "gray") +
+      geom_point(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+                 aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+                 size = 2, alpha = 0.5, color = "gray") +
+      labs(x = "Shot Category", y = NULL, title = "Curved Line Graph by Player") +
       theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + #rotate
-      theme(axis.text.y = element_blank()) +  # Remove xtra text on y axis
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      theme(axis.text.y = element_blank()) +
       geom_smooth(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
                   aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
-                  method = "loess", se = FALSE, size = 0.5, linetype = "solid", color = "gray") +  # Thinner and faint smoothed lines
-      geom_line(data = gather(selected_player, key = "ShotCategory", value = "Value", -Name), 
-                aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name), 
-                size = 2, linetype = "dashed", alpha = 1, color = "red") +  # Highlighted line with thicker size and red color
+                  method = "loess", se = FALSE, size = 0.5, linetype = "solid", color = "gray") +
+      geom_smooth(data = gather(selected_player(), key = "ShotCategory", value = "Value", -Name), 
+                  aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
+                  method = "loess", se = FALSE, size = 0.8, linetype = "dashed", color = "red") +
       theme(legend.position = "none", axis.title.y = element_blank(), axis.ticks.y = element_blank())
   })
 }
 
 shinyApp(ui, server)
+
+
