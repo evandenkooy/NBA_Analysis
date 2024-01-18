@@ -3,8 +3,16 @@ library('tidyverse')
 library('ggplot2')
 library('shiny')
 library('tidyr')
-library('babynames')
-baby <- babynames
+library('gganimate')
+library('hrbrthemes')
+library('viridis')
+library('lubridate')
+library('ggthemes')
+library('readxl')
+library("gifski")
+library("png")   
+
+
 #reading in data
 df <- read_csv('NBA_2023_SHOTS.csv')
 
@@ -81,29 +89,29 @@ for (name in unique(players$PLAYER_NAME)){
 # )
 # 
 # server <- function(input, output) {
-#   
+# 
 #   # Reactive expression to filter player data based on the selected player
 #   selected_player <- reactive({
 #     filter(player_data, Name == input$playerInput)
 #   })
-#   
+# 
 #   # Manually set the order of shot categories
 #   category_order <- c("Hoop", "Short", "Midrange", "Deep_2", "Three", "Deep")
-#   
+# 
 #   # Create a ggplot object
 #   output$playerPlot <- renderPlot({
 #     ggplot() +
-#       geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+#       geom_line(data = gather(player_data, key = "ShotCategory", value = "Value", -Name),
 #                 aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
 #                 size = 0.8, alpha = 0.5, color = "gray") +
 #       labs(x = "Shot Category", y = NULL, title = "Curved Line Graph by Player") +
 #       theme_minimal() +
 #       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
 #       theme(axis.text.y = element_blank()) +
-#       geom_smooth(data = gather(player_data, key = "ShotCategory", value = "Value", -Name), 
+#       geom_smooth(data = gather(player_data, key = "ShotCategory", value = "Value", -Name),
 #                   aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
 #                   method = "loess", se = FALSE, size = 0.5, linetype = "solid", color = "gray") +
-#       geom_smooth(data = gather(selected_player(), key = "ShotCategory", value = "Value", -Name), 
+#       geom_smooth(data = gather(selected_player(), key = "ShotCategory", value = "Value", -Name),
 #                   aes(x = factor(ShotCategory, levels = category_order), y = Value, color = Name, group = Name),
 #                   method = "loess", se = FALSE, size = 0.8, linetype = "dashed", color = "red") +
 #       theme(legend.position = "none", axis.title.y = element_blank(), axis.ticks.y = element_blank())
@@ -114,7 +122,7 @@ for (name in unique(players$PLAYER_NAME)){
 # #
 # #
 # #
-#
+
 pts <- players %>% 
   select(PLAYER_NAME) %>% 
   distinct()
@@ -128,13 +136,59 @@ for (row in 1:nrow(df)){
   } 
 }
 
-pts <- subset(pts, Three_Pts_Made >= 169)
+pts <- subset(pts, Three_Pts_Made >= 200)
+
+df$GAME_DATE = as.Date(df$GAME_DATE, format = "%m-%d-%Y")
+
 
 withDate <- df %>%
   arrange(PLAYER_NAME, GAME_DATE) %>%
   group_by(PLAYER_NAME) %>%
   mutate(Three_Pts_Made_Total = cumsum(SHOT_TYPE == "3PT Field Goal" & SHOT_MADE))
 
+
+
+# Keep only 3 names
+dateCondensed <- withDate %>% 
+  filter(PLAYER_NAME %in% pts$PLAYER_NAME) %>%
+  group_by(GAME_DATE, PLAYER_NAME) %>%
+  filter(SHOT_TYPE=="3PT Field Goal") %>%
+  filter(SHOT_MADE==TRUE)
+
+
+##########################
+
+
+
+DOESNT RENDER RIGHT&(#&((&!)$&(* H DHUYWIQC NWNvls,v)))!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!uio vgrsiouv
+
+
+plot<-dateCondensed%>% 
+  ggplot(aes(x=GAME_DATE,y=Three_Pts_Made_Total,color=PLAYER_NAME))+
+  geom_line(alpha=0.8)+
+  theme_solarized_2(light=F)+
+  labs(title="NBA Total Three Pointers Race, 2022-2023 Season",
+       caption="Source: Dom Samangy, Github, NBA_Shots_04_23")+
+  theme(text=element_text(colour="#EEEEEE"),
+        title=element_text(colour="#EEEEEE",size=9,face = "bold"),
+        plot.title=element_text(hjust=0.5),
+        axis.title.x = element_blank(),
+        panel.grid.minor.x=element_blank(),
+        legend.background = element_blank(),
+        legend.key= element_blank(),
+        legend.position=c(0.095, 0.81), ## legend at top-left, inside the plot
+        plot.margin = unit(c(0.5,1.3,0.5,0.5), "cm"))+ 
+  scale_x_date(date_labels = "%b",date_breaks ="1 month")
+
+
+plot.animation=plot+
+  transition_reveal(GAME_DATE)+
+  view_follow(fixed_y=T)
+
+#Save animation
+animate(plot.animation, height=365,width=608,fps=30,duration=10, renderer = gifski_renderer())
+
+anim_save(plot.animation, filename = "NBA_Total_Three_Pointers_Race_2022-2023_Season.gif")
 
 
 
