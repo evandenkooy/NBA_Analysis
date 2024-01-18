@@ -191,4 +191,3 @@ animate(plot.animation, height=365,width=608,fps=30,duration=10, renderer = gifs
 anim_save(plot.animation, filename = "NBA_Total_Three_Pointers_Race_2022-2023_Season.gif")
 
 
-
